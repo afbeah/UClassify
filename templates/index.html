@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UClassify</title>
+  <style>
+    body {
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #89bedf;
+      color: #333;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background-color: #fff;
+      padding: 100px;
+      border-radius: 20px;
+      box-shadow: 0 4px 20px #000;
+      width: 250px;
+      text-align: center;
+      margin: auto
+    }
+
+    h1,
+    h3 {
+      color: #004080;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    p {
+      color: #1b1b1b;
+      margin-bottom: 30px;
+      text-align: center;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 200%;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 16px;
+      resize: vertical;
+      box-sizing: border-box;
+      text-align: center;
+    }
+
+    .upload-area {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 30px;
+      cursor: pointer;
+      transition: border-color 0.3s;
+    }
+
+    .upload-area:hover {
+      border-color: #007bff;
+    }
+
+    input[type="file"] {
+      display: none;
+    }
+
+    .button-group {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      padding: 12px 25px;
+      font-size: 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      flex-grow: 1;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .result-box {
+      background-color: #a6bcd4;
+      border: 1px solid #171718;
+      padding: 20px;
+      margin-top: 30px;
+      border-radius: 8px;
+      text-align: left;
+      display: none;
+    }
+
+    .result-box h3 {
+      color: #004080;
+      margin-top: 0;
+    }
+
+    #classification,
+    #suggested-responde {
+      font-weight: bold;
+      color: #004080;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>UClassify</h1>
+    <h3>Análise de E-mail com IA</h2>
+      <p>Insira o conteúdo do e-mail ou faça upload do arquivo (.txt, .pdf), para realizar a classificação e obter resposta sugerida</p>
+
+      <form id="email-form">
+        <div class="input-group">
+          <textarea id="email-text" placeholder="Cole o texto do e-mail aqui."></textarea>
+        </div>
+
+        <button type="submit">Analisar</button>
+      </form>
+
+      <div class="result-box" id="result-container">
+        <h3>Resultado de Análise</h3>
+        <p><strong>Classificação:</strong><br> <span id="classification"></span></p>
+        <p><strong>Resposta Sugerida:</strong><br> <span id="suggested-response"></span></p>
+      </div>
+  </div>
+
+  <script>
+    document.getElementById('email-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const emailText = document.getElementById('email-text').value;
+      const emailFileElement = document.getElementById('email-file');
+
+      let formData = new FormData();
+
+      // Verificamos se há texto ou arquivo selecionado antes de enviar
+      if (emailText) {
+        formData.append('email_content', emailText);
+      } else if (emailFileElement && emailFileElement.files.length > 0) {
+        formData.append('email_file', emailFileElement.files[0]);
+      } else {
+        alert('Por favor, insira o texto ou faça o upload de um arquivo.');
+        return;
+      }
+
+      try {
+        const response = await fetch('/analyze', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          document.getElementById('classification').textContent = data.classification;
+          document.getElementById('suggested-response').textContent = data.suggested_response;
+          document.getElementById('result-container').style.display = 'block';
+        } else {
+          alert('Erro: ' + data.error);
+        }
+      } catch (error) {
+        console.error('Erro na requisição:', error);
+        alert('Erro na comunicação com o servidor. Por favor, tente novamente.');
+      }
+    });
+  </script>
+
+</body>
+
+</html>
