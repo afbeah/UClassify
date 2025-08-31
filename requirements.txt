@@ -1,5 +1,3 @@
 Flask
-transformers
-torch
-scikit-learn
 PyPDF2
+openai

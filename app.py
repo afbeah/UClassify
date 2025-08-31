@@ -2,13 +2,13 @@ import os
 import io
 import PyPDF2
 from flask import Flask, request, jsonify, render_template
-from transformers import pipeline
+from openai import OpenAI
+import openai
+
+# Configura a chave de API e o cliente da OpenAI
+client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
 
 app = Flask(__name__)
-
-classifier = pipeline("text-classification", model="nlptown/bert-base-multilingual-uncased-sentiment")
-
-text_generator = pipeline("text-generation", model="gpt2")
 
 # Funções de processamento
 def read_txt(file):
@@ -25,30 +25,43 @@ def preprocess_text(text):
     return " ".join(text.split())
 
 def classify_email(text):
-    result = classifier(text)[0]
-
-    label = result['label']
-
-    if "positive" in label.lower() or "5 stars" in label:
-        return "Produtivo"
-    else:
-        return "Improdutivo"
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Você é um assistente que classifica e-mails. Sua resposta deve ser apenas 'Produtivo' ou 'Improdutivo'."},
+                {"role": "user", "content": f"Classifique o seguinte e-mail: {text}"}
+            ],
+            max_tokens=10,
+            temperature=0.0
+        )
+        classification = response.choices[0].message.content.strip()
+        return classification
+    except Exception as e:
+        print(f"Erro na classificação: {e}")
+        return "Erro na Classificação"
 
 def generate_response(classification, email_content):
-
-    if classification == "Produtivo":
-        prompt = f"O e-mail a seguir é uma solicitação. Crie uma resposta automática educada confirmando o recebimento e que a equipe responsável irá analisar. E-mail: '{email_content}'"
-
-        response = text_generator(prompt, max_length=100, num_return_sequences=1)[0]['generated_text']
-        return response.split("E-mail:")[0].strip()
-
-    elif classification == "Improdutivo":
-        prompt = f"O e-mail a seguir é uma mensagem que não requer ação. Crie uma resposta automática educada agradecendo a mensagem e informando que ela foi recebida. E-mail: '{email_content}'"
-
-        response = text_generator(prompt, max_length=100, num_return_sequences=1)[0]['generated_text']
-        return response.split("E-mail:")[0].strip()
-
-    return "Não foi possível gerar uma resposta."
+    try:
+        if classification == "Produtivo":
+            prompt_content = f"O e-mail a seguir é uma solicitação. Crie uma resposta automática educada confirmando o recebimento e que a equipe responsável irá analisar. E-mail: '{email_content}'"
+        else:
+            prompt_content = f"O e-mail a seguir é uma mensagem que não requer ação. Crie uma resposta automática educada agradecendo a mensagem e informando que ela foi recebida. E-mail: '{email_content}'"
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "user", "content": prompt_content}
+            ],
+            max_tokens=100,
+            temperature=0.7
+        )
+        
+        suggested_response = response.choices[0].message.content.strip()
+        return suggested_response
+    except Exception as e:
+        print(f"Erro na geração de resposta: {e}")
+        return "Erro na Geração de Resposta"
 
 # Rotas do Flask
 @app.route('/')
@@ -83,9 +96,6 @@ def analyze():
     })
 
 if __name__ == '__main__':
-    # Para rodar localmente (modo debug)
-    # app.run(debug=True)
-    
-    # Para deploy, use a porta padrão da plataforma
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
