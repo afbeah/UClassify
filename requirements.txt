@@ -1,4 +1,4 @@
 Flask
-flaak-cors
+flask-cors
 PyPDF2
 openai
