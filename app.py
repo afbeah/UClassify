@@ -41,7 +41,7 @@ def classify_email(text):
         return response.choices[0].message.content.strip()
     except Exception as e:
         print(f"Erro OpenAI direto: {e}")
-        return "Erro na Classificação""
+        return "Erro na Classificação"
 
 def generate_response(classification, email_content):
     try:
