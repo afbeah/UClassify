@@ -1,14 +1,15 @@
 import os
 import io
 import PyPDF2
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify, render_template, CORS
 from openai import OpenAI
 import openai
 
-# Configura a chave de API e o cliente da OpenAI
-client = OpenAI(api_key=os.environ.get('OPENAI_API_KEY'))
+openai.api_key = os.environ.get('OPENAI_API_KEY')
+client = OpenAI(api_key=openai.api_key)
 
 app = Flask(__name__)
+CORS(app)
 
 # Funções de processamento
 def read_txt(file):
@@ -26,20 +27,21 @@ def preprocess_text(text):
 
 def classify_email(text):
     try:
-        response = client.chat.completions.create(
+        import openai
+        
+        response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Você é um assistente que classifica e-mails. Sua resposta deve ser apenas 'Produtivo' ou 'Improdutivo'."},
-                {"role": "user", "content": f"Classifique o seguinte e-mail: {text}"}
+                {"role": "system", "content": "Classifique como 'Produtivo' ou 'Improdutivo'."},
+                {"role": "user", "content": f"Classifique: {text[:2000]}"}
             ],
             max_tokens=10,
             temperature=0.0
         )
-        classification = response.choices[0].message.content.strip()
-        return classification
+        return response.choices[0].message.content.strip()
     except Exception as e:
-        print(f"Erro na classificação: {e}")
-        return "Erro na Classificação"
+        print(f"Erro OpenAI direto: {e}")
+        return "Erro na Classificação""
 
 def generate_response(classification, email_content):
     try:
@@ -94,6 +96,20 @@ def analyze():
         'classification': classification,
         'suggested_response': suggested_response
     })
+
+@app.route('/health')
+def health_check():
+    try:
+        # Teste simples da API
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": "Diga 'OK'"}],
+            max_tokens=5,
+            temperature=0.0
+        )
+        return jsonify({"status": "healthy", "openai": "working"})
+    except Exception as e:
+        return jsonify({"status": "error", "openai": str(e)}), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
